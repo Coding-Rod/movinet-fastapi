@@ -12,7 +12,17 @@ import os
 import tensorflow as tf
 import tensorflow_hub as hub
 
-app = FastAPI()
+description = """
+This is an API implementation of the [MoViNet](https://www.tensorflow.org/hub/tutorials/movinet) model.
+
+The classes of the model are the 600 classes of the Kinetics-600 dataset. 
+The full list of labels can be found at [this link](https://raw.githubusercontent.com/tensorflow/models/f8af2291cced43fc9f1d9b41ddbf772ae7b0d7d2/official/projects/movinet/files/kinetics_600_labels.txt).
+
+Author: Rodrigo Fernandez  
+GitHub: [@Coding-Rod](https://github.com/Coding-Rod)
+"""
+
+app = FastAPI(description=description)
 
 # Tensorflow configuration
 
@@ -65,23 +75,44 @@ def load_gif(file_path, image_size=(224, 224)):
     return video
 
 def inference(video):
-    sig = model.signatures['serving_default'] # The signature is the key of the model.signatures dictionary
-    video = tf.cast(video, tf.float32) / 255.
+    # Add model signature
+    sig = model.signatures['serving_default']
+    print(sig.pretty_printed_signature())
+    
+    # Outer batch dimension
     sig(image = video[tf.newaxis, :1])
-    probs = sig(image = video[tf.newaxis, ...])
-    probs = probs['classifier_head'][0]
+    
+    # Create logits
+    logits = sig(image = video[tf.newaxis, ...])
+    logits = logits['classifier_head'][0]
+
+    # Gettings probs
+    probs = tf.nn.softmax(logits, axis=-1)
     
     # Sort predictions to find top_k
-    top_prediction = tf.argsort(probs, axis=-1, direction='DESCENDING')[0]
+    top_predictions = tf.argsort(probs, axis=-1, direction='DESCENDING')
+    
     # collect the labels of top_k predictions
-    top_label = tf.gather(LABEL_MAP, top_prediction, axis=-1)
+    top_labels = tf.gather(LABEL_MAP, top_predictions, axis=-1)
+    
     # decode lablels
-    top_label = top_label.numpy().decode('utf8')
+    top_labels = [label.decode('utf8') for label in top_labels.numpy()]
+    
     # top_k probabilities of the predictions
-    return top_label
+    top_probs = tf.gather(probs, top_predictions, axis=-1).numpy()
+    
+    return f"The result is {top_labels[0]} with a probability of {top_probs[0]:.2%}"
 
 @app.post("/get_inference")
 async def get_inference(file: UploadFile = File(...)):
+    """ This function receives a gif file and returns the prediction of the model
+    
+    Args:
+        file (UploadFile, optional): The gif file to be processed.
+
+    Returns:
+        dict: The prediction of the model
+    """
     # Create gifs folder if it doesn't exist
     os.makedirs("uploads", exist_ok=True)
 
