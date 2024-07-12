@@ -10,7 +10,6 @@ import pathlib
 import os
 
 import tensorflow as tf
-import tensorflow_hub as hub
 
 description = """
 This is an API implementation of the [MoViNet](https://www.tensorflow.org/hub/tutorials/movinet) model.
@@ -35,11 +34,9 @@ labels_path = pathlib.Path(labels_path)
 lines = labels_path.read_text().splitlines()
 LABEL_MAP = np.array([line.strip() for line in lines])
 
-id = 'a2'
-mode = 'base'
-version = '3'
-hub_url = f'https://tfhub.dev/tensorflow/movinet/{id}/{mode}/kinetics-600/classification/{version}'
-model = hub.load(hub_url)
+saved_model_dir = './models/movinet_a2_base_kinetics600'
+
+model = tf.saved_model.load(saved_model_dir)
 
 # Add CORS middleware
 app.add_middleware(
@@ -124,6 +121,10 @@ async def get_inference(file: UploadFile = File(...)):
     result = inference(load_gif(filename))
     
     return {"message": result}
+
+@app.get("/health")
+async def health():
+    return {"message": "The server is running"}
 
 @app.get("/", include_in_schema=False)
 async def root():
