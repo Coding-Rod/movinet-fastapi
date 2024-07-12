@@ -77,7 +77,6 @@ def load_gif(file_path, image_size=(224, 224)):
 def inference(video):
     # Add model signature
     sig = model.signatures['serving_default']
-    print(sig.pretty_printed_signature())
     
     # Outer batch dimension
     sig(image = video[tf.newaxis, :1])
