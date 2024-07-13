@@ -11,5 +11,5 @@ pip install -r requirements.txt
 ## Uso
 
 ```bash
-uvicorn main:app
+uvicorn app:app
 ```

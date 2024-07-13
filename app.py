@@ -122,10 +122,6 @@ async def get_inference(file: UploadFile = File(...)):
     
     return {"message": result}
 
-@app.get("/health")
-async def health():
-    return {"message": "The server is running"}
-
 @app.get("/", include_in_schema=False)
 async def root():
     # Redirect to the documentation
